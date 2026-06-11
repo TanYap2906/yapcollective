@@ -1,0 +1,190 @@
+import { Ionicons } from '@expo/vector-icons';
+import React from 'react';
+import {
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import { useRouter } from 'expo-router';
+
+const readingLinks = [
+  'https://en.wikipedia.org/wiki/Dictatorship',
+  'https://en.wikipedia.org/wiki/Totalitarianism',
+  'https://en.wikipedia.org/wiki/Authoritarianism',
+  'https://en.wikipedia.org/wiki/History_of_democracy',
+  'https://en.wikipedia.org/wiki/Political_science',
+  'https://en.wikipedia.org/wiki/Civil_liberties',
+];
+
+const loremText =
+  'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Suspendisse in lacus sit amet dui viverra volutpat quis nec augue. Mauris viverra pharetra lorem sed maximus. Morbi lacinia aliquet augue id interdum. Cras euismod imperdiet nulla at hendrerit. Quisque sed iaculis elit. Fusce pellentesque augue purus, sit amet lacinia nisl semper sed. Nunc viverra fringilla est, sed lacinia turpis egestas vitae. Nulla dictum eros id purus venenatis fringilla. Nunc consequat nisi id nunc vehicula aliquam. Nam id accumsan dui. Praesent vitae libero at orci facilisis dignissim. Integer euismod, augue id suscipit vulputate, ipsum neque cursus lectus, vitae posuere risus ante vel risus. Donec tempor lectus non sapien pretium, vitae luctus nunc tincidunt. Etiam blandit, lectus at facilisis laoreet, turpis nisi luctus ante, vitae pharetra lorem nisi vel mi.';
+
+export default function GeneralKnowledgeScreen() {
+  const router = useRouter();
+
+  return (
+    <SafeAreaView style={styles.container}>
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <View style={styles.topBar}>
+          <TouchableOpacity style={styles.iconButton} activeOpacity={0.8} onPress={() => router.back()}>
+            <Ionicons name="chevron-back" size={34} color="#cb8ba6" />
+          </TouchableOpacity>
+
+          <View style={styles.profileCircle}>
+            <Text style={styles.profileText}>GK</Text>
+          </View>
+        </View>
+
+        <View style={styles.topicCard}>
+          <Text style={styles.topicHeading}>{"This week's general knowledge topic is:"}</Text>
+          <View style={styles.topicBox}>
+            <Text style={styles.topicTitle}>Historical Dictatorships</Text>
+          </View>
+        </View>
+
+        <ScrollView style={styles.articleCard} nestedScrollEnabled showsVerticalScrollIndicator>
+          <Text style={styles.articleText}>{loremText}</Text>
+          <Text style={styles.articleText}>{loremText}</Text>
+        </ScrollView>
+
+        <View style={styles.linksCard}>
+          <Text style={styles.linksHeading}>Other reading materials:</Text>
+          <ScrollView style={styles.linksList} nestedScrollEnabled showsVerticalScrollIndicator>
+            {readingLinks.map((link) => (
+              <View key={link} style={styles.linkRow}>
+                <Text style={styles.bullet}>•</Text>
+                <Text style={styles.linkText}>{link}</Text>
+              </View>
+            ))}
+          </ScrollView>
+        </View>
+
+        <Text style={styles.rewardText}>Read GK topics for extra rewards!</Text>
+      </ScrollView>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: '#3a2b3e' },
+  content: {
+    alignSelf: 'center',
+    flexGrow: 1,
+    maxWidth: 430,
+    paddingBottom: 24,
+    paddingHorizontal: 22,
+    paddingTop: 34,
+    width: '100%',
+  },
+  topBar: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 44,
+  },
+  iconButton: {
+    height: 48,
+    justifyContent: 'center',
+    width: 52,
+  },
+  profileCircle: {
+    alignItems: 'center',
+    backgroundColor: '#eab8b9',
+    borderColor: '#cb8ba6',
+    borderRadius: 24,
+    borderWidth: 3,
+    height: 54,
+    justifyContent: 'center',
+    width: 54,
+  },
+  profileText: {
+    color: '#3a2b3e',
+    fontFamily: 'Alata_400Regular',
+    fontSize: 18,
+  },
+  topicCard: {
+    backgroundColor: '#eab8b9',
+    borderRadius: 22,
+    marginBottom: 13,
+    padding: 12,
+  },
+  topicHeading: {
+    color: '#64385c',
+    fontFamily: 'Alata_400Regular',
+    fontSize: 16,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  topicBox: {
+    alignItems: 'center',
+    backgroundColor: '#cb8ba6',
+    borderRadius: 13,
+    justifyContent: 'center',
+    minHeight: 58,
+    paddingHorizontal: 10,
+  },
+  topicTitle: {
+    color: '#f9eeee',
+    fontFamily: 'Alata_400Regular',
+    fontSize: 24,
+    textAlign: 'center',
+  },
+  articleCard: {
+    backgroundColor: '#64385c',
+    borderRadius: 20,
+    maxHeight: 358,
+    marginBottom: 12,
+    padding: 15,
+  },
+  articleText: {
+    color: '#f9eeee',
+    fontFamily: 'Alata_400Regular',
+    fontSize: 17,
+    lineHeight: 25,
+    marginBottom: 14,
+  },
+  linksCard: {
+    backgroundColor: '#cb8ba6',
+    borderRadius: 16,
+    marginBottom: 24,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
+  linksHeading: {
+    color: '#64385c',
+    fontFamily: 'Alata_400Regular',
+    fontSize: 16,
+    marginBottom: 4,
+    textAlign: 'center',
+  },
+  linksList: {
+    maxHeight: 96,
+  },
+  linkRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 2,
+  },
+  bullet: {
+    color: '#f9eeee',
+    fontFamily: 'Alata_400Regular',
+    fontSize: 17,
+    lineHeight: 23,
+  },
+  linkText: {
+    color: '#f9eeee',
+    flex: 1,
+    fontFamily: 'Alata_400Regular',
+    fontSize: 14,
+    lineHeight: 22,
+  },
+  rewardText: {
+    color: '#eab8b9',
+    fontFamily: 'Alata_400Regular',
+    fontSize: 16,
+    textAlign: 'center',
+  },
+});
