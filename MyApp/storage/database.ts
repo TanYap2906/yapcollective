@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const USERS_KEY = 'users';
 const CURRENT_USER_KEY = 'currentUser';
+const COURSE_PROGRESS_KEY = 'courseProgress';
 
 export type UserProfile = {
   uid: string;
@@ -50,4 +51,33 @@ export async function getCurrentUser(): Promise<UserProfile | null> {
 
 export async function logoutUser(): Promise<void> {
   await AsyncStorage.removeItem(CURRENT_USER_KEY);
+}
+
+export async function getCourseProgress(userId: string, courseId: string): Promise<number> {
+  const savedProgress = await AsyncStorage.getItem(COURSE_PROGRESS_KEY);
+
+  if (!savedProgress) {
+    return 0;
+  }
+
+  const progressByUser = JSON.parse(savedProgress);
+  return progressByUser[userId]?.[courseId] ?? 0;
+}
+
+export async function saveCourseProgress(
+  userId: string,
+  courseId: string,
+  progress: number
+): Promise<void> {
+  const savedProgress = await AsyncStorage.getItem(COURSE_PROGRESS_KEY);
+  const progressByUser = savedProgress ? JSON.parse(savedProgress) : {};
+  const userProgress = progressByUser[userId] ?? {};
+  const currentProgress = userProgress[courseId] ?? 0;
+
+  progressByUser[userId] = {
+    ...userProgress,
+    [courseId]: Math.max(currentProgress, progress),
+  };
+
+  await AsyncStorage.setItem(COURSE_PROGRESS_KEY, JSON.stringify(progressByUser));
 }

@@ -1,6 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
+  Animated,
+  Pressable,
   SafeAreaView,
   ScrollView,
   StyleSheet,
@@ -9,13 +11,23 @@ import {
   View,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { getCurrentUser, logoutUser, UserProfile } from '@/storage/database';
+import { courses } from '@/data/courses';
+import {
+  getCourseProgress,
+  getCurrentUser,
+  logoutUser,
+  UserProfile,
+} from '@/storage/database';
 
-const courseProgress = 33;
+const FEATURED_COURSE_ID = 'rebuttals';
+const drawerWidth = 340;
 
 export default function HomeScreen() {
   const router = useRouter();
   const [user, setUser] = useState<UserProfile | null>(null);
+  const [courseProgresses, setCourseProgresses] = useState<Record<string, number>>({});
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const drawerX = useRef(new Animated.Value(-drawerWidth)).current;
 
   useEffect(() => {
     async function loadUser() {
@@ -23,6 +35,7 @@ export default function HomeScreen() {
 
       if (savedUser) {
         setUser(savedUser);
+        await loadCourseProgresses(savedUser.uid);
       } else {
         router.replace('/login');
       }
@@ -31,9 +44,33 @@ export default function HomeScreen() {
     loadUser();
   }, [router]);
 
+  useEffect(() => {
+    Animated.timing(drawerX, {
+      duration: 280,
+      toValue: isDrawerOpen ? 0 : -drawerWidth,
+      useNativeDriver: true,
+    }).start();
+  }, [drawerX, isDrawerOpen]);
+
+  const loadCourseProgresses = async (userId: string) => {
+    const entries = await Promise.all(
+      courses.map(async (course) => [course.id, await getCourseProgress(userId, course.id)] as const)
+    );
+
+    setCourseProgresses(Object.fromEntries(entries));
+  };
+
   const handleLogout = async () => {
     await logoutUser();
     router.replace('/login');
+  };
+
+  const openCourse = (courseId: string) => {
+    setIsDrawerOpen(false);
+    router.push({
+      pathname: '/course',
+      params: { courseId },
+    });
   };
 
   if (!user) {
@@ -47,18 +84,19 @@ export default function HomeScreen() {
   }
 
   const firstName = user.fullName.split(' ')[0] || user.fullName;
-  const initials = user.fullName
-    .split(' ')
-    .map((namePart) => namePart[0])
-    .join('')
-    .slice(0, 2)
-    .toUpperCase();
+  const initials = getInitials(user.fullName);
+  const featuredCourse = courses.find((course) => course.id === FEATURED_COURSE_ID) ?? courses[1];
+  const featuredProgress = courseProgresses[featuredCourse.id] ?? 0;
 
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.topBar}>
-          <TouchableOpacity style={styles.iconButton} activeOpacity={0.8}>
+          <TouchableOpacity
+            style={styles.iconButton}
+            activeOpacity={0.8}
+            onPress={() => setIsDrawerOpen(true)}
+          >
             <Ionicons name="menu" size={36} color="#cb8ba6" />
           </TouchableOpacity>
 
@@ -78,18 +116,20 @@ export default function HomeScreen() {
           <View style={styles.lessonCard}>
             <View style={styles.lessonHeader}>
               <View style={styles.lessonNumber}>
-                <Text style={styles.lessonNumberText}>2</Text>
+                <Text style={styles.lessonNumberText}>{featuredCourse.number}</Text>
               </View>
-              <Text style={styles.lessonTitle}>Rebuttals</Text>
+              <Text style={styles.lessonTitle}>{featuredCourse.title}</Text>
             </View>
 
-            <View style={styles.progressTrack}>
-              <View style={[styles.progressFill, { width: `${courseProgress}%` }]} />
-            </View>
-            <Text style={styles.progressText}>{courseProgress}% completed</Text>
+            <ProgressBar progress={featuredProgress} trackStyle={styles.progressTrack} />
+            <Text style={styles.progressText}>{featuredProgress}% completed</Text>
           </View>
 
-          <TouchableOpacity style={styles.pillButton} activeOpacity={0.85}>
+          <TouchableOpacity
+            style={styles.pillButton}
+            activeOpacity={0.85}
+            onPress={() => openCourse(featuredCourse.id)}
+          >
             <Text style={styles.pillButtonText}>Enter Course</Text>
             <Ionicons name="arrow-forward" size={18} color="#64385c" />
           </TouchableOpacity>
@@ -115,7 +155,11 @@ export default function HomeScreen() {
           <View style={styles.motionBox}>
             <Text style={styles.motionText}>THS amnesty for dictators</Text>
           </View>
-          <TouchableOpacity style={styles.motionPillButton} activeOpacity={0.85}>
+          <TouchableOpacity
+            style={styles.motionPillButton}
+            activeOpacity={0.85}
+            onPress={() => router.push('/motion')}
+          >
             <Text style={styles.motionPillText}>Info Slide</Text>
             <Ionicons name="arrow-forward" size={15} color="#64385c" />
           </TouchableOpacity>
@@ -123,8 +167,112 @@ export default function HomeScreen() {
 
         <Text style={styles.rewardText}>Log in daily for extra rewards!</Text>
       </ScrollView>
+
+      {isDrawerOpen && (
+        <Pressable style={styles.scrim} onPress={() => setIsDrawerOpen(false)} />
+      )}
+
+      <Animated.View style={[styles.drawer, { transform: [{ translateX: drawerX }] }]}>
+        <View style={styles.drawerTopBar}>
+          <TouchableOpacity style={styles.iconButton} activeOpacity={0.8} onPress={() => setIsDrawerOpen(false)}>
+            <Ionicons name="close" size={33} color="#cb8ba6" />
+          </TouchableOpacity>
+          <View style={styles.profileButton}>
+            <Text style={styles.profileInitials}>{initials}</Text>
+          </View>
+        </View>
+
+        <Text style={styles.drawerTitle}>Menu</Text>
+
+        <View style={styles.drawerNav}>
+          <DrawerNavItem
+            icon="book"
+            label="Course Dashboard"
+            onPress={() => {
+              setIsDrawerOpen(false);
+              router.push('/course-dashboard');
+            }}
+          />
+          <DrawerNavItem
+            icon="podium"
+            label="Leaderboard"
+            onPress={() => {
+              setIsDrawerOpen(false);
+              router.push('/leaderboard');
+            }}
+          />
+          <DrawerNavItem
+            icon="settings"
+            label="Settings"
+            onPress={() => {
+              setIsDrawerOpen(false);
+              router.push('/settings');
+            }}
+          />
+        </View>
+      </Animated.View>
     </SafeAreaView>
   );
+}
+
+type ProgressBarProps = {
+  progress: number;
+  trackStyle: object;
+};
+
+function ProgressBar({ progress, trackStyle }: ProgressBarProps) {
+  const animatedProgress = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.timing(animatedProgress, {
+      duration: 650,
+      toValue: progress,
+      useNativeDriver: false,
+    }).start();
+  }, [animatedProgress, progress]);
+
+  return (
+    <View style={trackStyle}>
+      <Animated.View
+        style={[
+          styles.progressFill,
+          {
+            width: animatedProgress.interpolate({
+              inputRange: [0, 100],
+              outputRange: ['0%', '100%'],
+            }),
+          },
+        ]}
+      />
+    </View>
+  );
+}
+
+type DrawerNavItemProps = {
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  onPress: () => void;
+};
+
+function DrawerNavItem({ icon, label, onPress }: DrawerNavItemProps) {
+  return (
+    <TouchableOpacity style={styles.drawerNavItem} activeOpacity={0.85} onPress={onPress}>
+      <View style={styles.drawerNavIcon}>
+        <Ionicons name={icon} size={24} color="#f9eeee" />
+      </View>
+      <Text style={styles.drawerNavText}>{label}</Text>
+      <Ionicons name="arrow-forward" size={20} color="#64385c" />
+    </TouchableOpacity>
+  );
+}
+
+function getInitials(name: string) {
+  return name
+    .split(' ')
+    .map((namePart) => namePart[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase();
 }
 
 const styles = StyleSheet.create({
@@ -135,9 +283,9 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     flexGrow: 1,
     maxWidth: 430,
+    paddingBottom: 24,
     paddingHorizontal: 22,
     paddingTop: 34,
-    paddingBottom: 24,
     width: '100%',
   },
   topBar: {
@@ -347,5 +495,57 @@ const styles = StyleSheet.create({
     fontFamily: 'Alata_400Regular',
     fontSize: 16,
     textAlign: 'center',
+  },
+  scrim: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(58, 43, 62, 0.52)',
+  },
+  drawer: {
+    backgroundColor: '#3a2b3e',
+    bottom: 0,
+    left: 0,
+    paddingBottom: 24,
+    paddingHorizontal: 18,
+    paddingTop: 34,
+    position: 'absolute',
+    top: 0,
+    width: drawerWidth,
+  },
+  drawerTopBar: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 22,
+  },
+  drawerTitle: {
+    color: '#f9eeee',
+    fontFamily: 'Alata_400Regular',
+    fontSize: 33,
+    marginBottom: 18,
+  },
+  drawerNav: {
+    gap: 12,
+  },
+  drawerNavItem: {
+    alignItems: 'center',
+    backgroundColor: '#eab8b9',
+    borderRadius: 18,
+    flexDirection: 'row',
+    gap: 12,
+    padding: 13,
+  },
+  drawerNavIcon: {
+    alignItems: 'center',
+    backgroundColor: '#64385c',
+    borderRadius: 19,
+    height: 38,
+    justifyContent: 'center',
+    width: 38,
+  },
+  drawerNavText: {
+    color: '#3a2b3e',
+    flex: 1,
+    fontFamily: 'Alata_400Regular',
+    fontSize: 22,
   },
 });

@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   SafeAreaView,
   ScrollView,
@@ -9,6 +9,7 @@ import {
   View,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { getCurrentUser, UserProfile } from '@/storage/database';
 
 const readingLinks = [
   'https://en.wikipedia.org/wiki/Dictatorship',
@@ -20,10 +21,27 @@ const readingLinks = [
 ];
 
 const loremText =
-  'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Suspendisse in lacus sit amet dui viverra volutpat quis nec augue. Mauris viverra pharetra lorem sed maximus. Morbi lacinia aliquet augue id interdum. Cras euismod imperdiet nulla at hendrerit. Quisque sed iaculis elit. Fusce pellentesque augue purus, sit amet lacinia nisl semper sed. Nunc viverra fringilla est, sed lacinia turpis egestas vitae. Nulla dictum eros id purus venenatis fringilla. Nunc consequat nisi id nunc vehicula aliquam. Nam id accumsan dui. Praesent vitae libero at orci facilisis dignissim. Integer euismod, augue id suscipit vulputate, ipsum neque cursus lectus, vitae posuere risus ante vel risus. Donec tempor lectus non sapien pretium, vitae luctus nunc tincidunt. Etiam blandit, lectus at facilisis laoreet, turpis nisi luctus ante, vitae pharetra lorem nisi vel mi.';
+  'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Suspendisse in lacus sit amet dui viverra volutpat quis nec augue. Mauris viverra pharetra lorem sed maximus. Morbi lacinia aliquet augue id interdum. Cras euismod imperdiet nulla at hendrerit. Quisque sed iaculis elit. Fusce pellentesque augue purus, sit amet lacinia nisl semper sed. Nunc viverra fringilla est, sed lacinia turpis egestas vitae. Nulla dictum eros id purus venenatis fringilla. Nunc consequat nisi id nunc vehicula aliquam. Nam id accumsan dui. Praesent vitae libero at orci facilisis dignissim. Integer euismod, augue id suscipit vulputate, ipsum neque cursus lectus, vitae posuere risus ante vel risus.';
 
 export default function GeneralKnowledgeScreen() {
   const router = useRouter();
+  const [user, setUser] = useState<UserProfile | null>(null);
+
+  useEffect(() => {
+    async function loadUser() {
+      const savedUser = await getCurrentUser();
+
+      if (savedUser) {
+        setUser(savedUser);
+      } else {
+        router.replace('/login');
+      }
+    }
+
+    loadUser();
+  }, [router]);
+
+  const initials = getInitials(user?.fullName);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -34,7 +52,7 @@ export default function GeneralKnowledgeScreen() {
           </TouchableOpacity>
 
           <View style={styles.profileCircle}>
-            <Text style={styles.profileText}>GK</Text>
+            <Text style={styles.profileText}>{initials}</Text>
           </View>
         </View>
 
@@ -55,7 +73,7 @@ export default function GeneralKnowledgeScreen() {
           <ScrollView style={styles.linksList} nestedScrollEnabled showsVerticalScrollIndicator>
             {readingLinks.map((link) => (
               <View key={link} style={styles.linkRow}>
-                <Text style={styles.bullet}>•</Text>
+                <Text style={styles.bullet}>-</Text>
                 <Text style={styles.linkText}>{link}</Text>
               </View>
             ))}
@@ -66,6 +84,19 @@ export default function GeneralKnowledgeScreen() {
       </ScrollView>
     </SafeAreaView>
   );
+}
+
+function getInitials(name?: string) {
+  if (!name) {
+    return '';
+  }
+
+  return name
+    .split(' ')
+    .map((namePart) => namePart[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase();
 }
 
 const styles = StyleSheet.create({
@@ -93,12 +124,10 @@ const styles = StyleSheet.create({
   profileCircle: {
     alignItems: 'center',
     backgroundColor: '#eab8b9',
-    borderColor: '#cb8ba6',
-    borderRadius: 24,
-    borderWidth: 3,
-    height: 54,
+    borderRadius: 26,
+    height: 52,
     justifyContent: 'center',
-    width: 54,
+    width: 52,
   },
   profileText: {
     color: '#3a2b3e',
@@ -135,8 +164,8 @@ const styles = StyleSheet.create({
   articleCard: {
     backgroundColor: '#64385c',
     borderRadius: 20,
-    maxHeight: 358,
     marginBottom: 12,
+    maxHeight: 358,
     padding: 15,
   },
   articleText: {
