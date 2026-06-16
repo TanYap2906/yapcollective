@@ -44,6 +44,9 @@ export default function SignupScreen() {
         email: email.trim().toLowerCase(),
         password,
         createdAt: new Date().toISOString(),
+        earnedRewardIds: [],
+        submittedMotionIds: [],
+        xp: 0,
         role: 'user',
       };
 

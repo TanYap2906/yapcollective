@@ -13,8 +13,11 @@ import {
   View,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { UserProfileBadge } from '@/components/UserProfileBadge';
+import { XpPopup } from '@/components/XpPopup';
 import { getCourseById } from '@/data/courses';
 import {
+  awardXpOnce,
   getCourseProgress,
   getCurrentUser,
   saveCourseProgress,
@@ -38,6 +41,7 @@ export default function CourseScreen() {
   const [progress, setProgress] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState('');
   const [orderedItems, setOrderedItems] = useState(orderingItems);
+  const [xpPopup, setXpPopup] = useState<{ amount: number; message: string } | null>(null);
   const animatedProgress = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -80,9 +84,18 @@ export default function CourseScreen() {
     const nextStep = Math.min(step + 1, totalSteps);
     await saveProgressForStep(nextStep);
 
-    if (nextStep === totalSteps) {
-      Alert.alert('Course complete', `Nice work. Your ${course.title} progress is now complete.`);
-      router.replace('/home');
+    if (nextStep === totalSteps && user) {
+      const result = await awardXpOnce(user.uid, `course-complete-${course.id}`, 50);
+
+      if (result.user) {
+        setUser(result.user);
+      }
+
+      if (result.awarded) {
+        setXpPopup({ amount: 50, message: 'You have completed the course!' });
+      } else {
+        router.replace('/home');
+      }
       return;
     }
 
@@ -93,6 +106,18 @@ export default function CourseScreen() {
     if (!selectedAnswer) {
       Alert.alert('Choose an answer', 'Pick one quiz answer before moving on.');
       return;
+    }
+
+    if (user && selectedAnswer === 'Answer an opposing argument and explain why yours is stronger.') {
+      const result = await awardXpOnce(user.uid, `practice-quiz-${course.id}`, 20);
+
+      if (result.user) {
+        setUser(result.user);
+      }
+
+      if (result.awarded) {
+        setXpPopup({ amount: 20, message: 'Great job on the practice quiz!' });
+      }
     }
 
     await goNext();
@@ -121,9 +146,7 @@ export default function CourseScreen() {
             <Ionicons name="chevron-back" size={34} color="#cb8ba6" />
           </TouchableOpacity>
 
-          <View style={styles.profileCircle}>
-            <Text style={styles.profileText}>{initials}</Text>
-          </View>
+          <UserProfileBadge initials={initials} xp={user?.xp ?? 0} />
         </View>
 
         <Text style={styles.unitLabel}>UNIT {course.number}.1</Text>
@@ -159,6 +182,19 @@ export default function CourseScreen() {
           />
         )}
       </ScrollView>
+      <XpPopup
+        amount={xpPopup?.amount ?? 0}
+        message={xpPopup?.message ?? ''}
+        visible={Boolean(xpPopup)}
+        onClose={() => {
+          const completedCourse = xpPopup?.message === 'You have completed the course!';
+          setXpPopup(null);
+
+          if (completedCourse) {
+            router.replace('/home');
+          }
+        }}
+      />
     </SafeAreaView>
   );
 }
@@ -167,15 +203,22 @@ function LessonContent({ courseTitle, onNext }: { courseTitle: string; onNext: (
   return (
     <View>
       <Text style={styles.pageTitle}>What is {courseTitle.toLowerCase()}?</Text>
-      <View style={styles.lightCard}>
+      <ScrollView style={styles.lessonScrollCard} nestedScrollEnabled showsVerticalScrollIndicator>
         <Text style={styles.bodyText}>
           Lorem ipsum dolor sit amet, consectetur adipiscing elit. Suspendisse in lacus sit
           amet dui viverra volutpat quis nec augue. Mauris viverra pharetra lorem sed
           maximus. Morbi lacinia aliquet augue id interdum. Cras euismod imperdiet nulla at
           hendrerit. Quisque sed iaculis elit. Fusce pellentesque augue purus, sit amet
-          lacinia nisl semper sed.
+          lacinia nisl semper sed. Nunc viverra fringilla est, sed lacinia turpis egestas
+          vitae. Nulla dictum eros id purus venenatis fringilla.
         </Text>
-      </View>
+        <Text style={styles.bodyText}>
+          Praesent vitae libero at orci facilisis dignissim. Integer euismod, augue id
+          suscipit vulputate, ipsum neque cursus lectus, vitae posuere risus ante vel risus.
+          Donec tempor lectus non sapien pretium, vitae luctus nunc tincidunt. Etiam blandit
+          lectus at facilisis laoreet, turpis nisi luctus ante.
+        </Text>
+      </ScrollView>
 
       <Text style={styles.exampleTitle}>For example:</Text>
       <View style={styles.darkCard}>
@@ -209,7 +252,7 @@ function QuizContent({ courseTitle, onSubmit, selectedAnswer, setSelectedAnswer 
   return (
     <View>
       <Text style={styles.pageTitle}>Quick quiz</Text>
-      <View style={styles.lightCard}>
+      <View style={styles.quizCard}>
         <Text style={styles.questionText}>Which option best describes {courseTitle.toLowerCase()}?</Text>
         {answers.map((answer) => {
           const isSelected = selectedAnswer === answer;
@@ -246,7 +289,7 @@ function OrderingContent({ courseTitle, moveItem, onSubmit, orderedItems }: Orde
     <View>
       <Text style={styles.pageTitle}>Order {courseTitle.toLowerCase()}</Text>
       <View style={styles.lightCard}>
-        <Text style={styles.questionText}>Put these rebuttal steps in a strong order.</Text>
+        <Text style={styles.orderQuestionText}>Put these rebuttal steps in a strong order.</Text>
         {orderedItems.map((item, index) => (
           <DraggableOrderRow
             index={index}
@@ -426,6 +469,14 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     padding: 15,
   },
+  lessonScrollCard: {
+    backgroundColor: '#eab8b9',
+    borderRadius: 21,
+    marginBottom: 12,
+    maxHeight: 396,
+    minHeight: 300,
+    padding: 18,
+  },
   bodyText: {
     color: '#64385c',
     fontFamily: 'Alata_400Regular',
@@ -451,27 +502,42 @@ const styles = StyleSheet.create({
     lineHeight: 21,
   },
   questionText: {
+    color: '#f9eeee',
+    fontFamily: 'Alata_400Regular',
+    fontSize: 21,
+    lineHeight: 30,
+    marginBottom: 18,
+  },
+  orderQuestionText: {
     color: '#64385c',
     fontFamily: 'Alata_400Regular',
     fontSize: 18,
+    lineHeight: 25,
     marginBottom: 12,
   },
   answerButton: {
-    backgroundColor: '#f9eeee',
-    borderRadius: 14,
-    marginBottom: 10,
-    padding: 12,
+    backgroundColor: '#eab8b9',
+    borderRadius: 22,
+    marginBottom: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
   },
   answerButtonSelected: {
-    backgroundColor: '#64385c',
+    backgroundColor: '#cb8ba6',
   },
   answerText: {
-    color: '#64385c',
+    color: '#3a2b3e',
     fontFamily: 'Alata_400Regular',
-    fontSize: 15,
+    fontSize: 17,
   },
   answerTextSelected: {
-    color: '#f9eeee',
+    color: '#3a2b3e',
+  },
+  quizCard: {
+    backgroundColor: '#64385c',
+    borderRadius: 28,
+    marginBottom: 12,
+    padding: 16,
   },
   orderRow: {
     alignItems: 'center',

@@ -3,6 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const USERS_KEY = 'users';
 const CURRENT_USER_KEY = 'currentUser';
 const COURSE_PROGRESS_KEY = 'courseProgress';
+const MOTION_ARGUMENTS_KEY = 'motionArguments';
 
 export type UserProfile = {
   uid: string;
@@ -10,6 +11,9 @@ export type UserProfile = {
   email: string;
   password: string;
   createdAt: string;
+  xp?: number;
+  earnedRewardIds?: string[];
+  submittedMotionIds?: string[];
   role: 'user';
 };
 
@@ -20,7 +24,7 @@ export async function getUsers(): Promise<UserProfile[]> {
     return [];
   }
 
-  return JSON.parse(savedUsers);
+  return JSON.parse(savedUsers).map(normalizeUser);
 }
 
 export async function saveUser(newUser: UserProfile): Promise<void> {
@@ -31,8 +35,10 @@ export async function saveUser(newUser: UserProfile): Promise<void> {
     throw new Error('An account with this email already exists.');
   }
 
-  await AsyncStorage.setItem(USERS_KEY, JSON.stringify([...users, newUser]));
-  await saveCurrentUser(newUser);
+  const userWithDefaults = normalizeUser(newUser);
+
+  await AsyncStorage.setItem(USERS_KEY, JSON.stringify([...users, userWithDefaults]));
+  await saveCurrentUser(userWithDefaults);
 }
 
 export async function saveCurrentUser(user: UserProfile): Promise<void> {
@@ -46,7 +52,7 @@ export async function getCurrentUser(): Promise<UserProfile | null> {
     return null;
   }
 
-  return JSON.parse(savedUser);
+  return normalizeUser(JSON.parse(savedUser));
 }
 
 export async function logoutUser(): Promise<void> {
@@ -80,4 +86,102 @@ export async function saveCourseProgress(
   };
 
   await AsyncStorage.setItem(COURSE_PROGRESS_KEY, JSON.stringify(progressByUser));
+}
+
+export async function awardXpOnce(
+  userId: string,
+  rewardId: string,
+  amount: number
+): Promise<{ awarded: boolean; user: UserProfile | null }> {
+  const users = await getUsers();
+  const user = users.find((savedUser) => savedUser.uid === userId);
+
+  if (!user) {
+    return { awarded: false, user: null };
+  }
+
+  if (user.earnedRewardIds?.includes(rewardId)) {
+    return { awarded: false, user };
+  }
+
+  const updatedUser: UserProfile = {
+    ...user,
+    earnedRewardIds: [...(user.earnedRewardIds ?? []), rewardId],
+    xp: (user.xp ?? 0) + amount,
+  };
+
+  await saveUpdatedUser(updatedUser);
+  return { awarded: true, user: updatedUser };
+}
+
+export async function hasSubmittedMotion(userId: string, motionId: string): Promise<boolean> {
+  const users = await getUsers();
+  const user = users.find((savedUser) => savedUser.uid === userId);
+  return user?.submittedMotionIds?.includes(motionId) ?? false;
+}
+
+export async function markMotionSubmitted(userId: string, motionId: string): Promise<UserProfile | null> {
+  const users = await getUsers();
+  const user = users.find((savedUser) => savedUser.uid === userId);
+
+  if (!user) {
+    return null;
+  }
+
+  const updatedUser: UserProfile = {
+    ...user,
+    submittedMotionIds: Array.from(new Set([...(user.submittedMotionIds ?? []), motionId])),
+  };
+
+  await saveUpdatedUser(updatedUser);
+  return updatedUser;
+}
+
+export async function getMotionArgument(userId: string, submissionId: string): Promise<string> {
+  const savedArguments = await AsyncStorage.getItem(MOTION_ARGUMENTS_KEY);
+
+  if (!savedArguments) {
+    return '';
+  }
+
+  const argumentsByUser = JSON.parse(savedArguments);
+  return argumentsByUser[userId]?.[submissionId] ?? '';
+}
+
+export async function saveMotionArgument(
+  userId: string,
+  submissionId: string,
+  text: string
+): Promise<void> {
+  const savedArguments = await AsyncStorage.getItem(MOTION_ARGUMENTS_KEY);
+  const argumentsByUser = savedArguments ? JSON.parse(savedArguments) : {};
+  const userArguments = argumentsByUser[userId] ?? {};
+
+  argumentsByUser[userId] = {
+    ...userArguments,
+    [submissionId]: text,
+  };
+
+  await AsyncStorage.setItem(MOTION_ARGUMENTS_KEY, JSON.stringify(argumentsByUser));
+}
+
+async function saveUpdatedUser(updatedUser: UserProfile): Promise<void> {
+  const users = await getUsers();
+  const updatedUsers = users.map((user) => (user.uid === updatedUser.uid ? updatedUser : user));
+  const currentUser = await getCurrentUser();
+
+  await AsyncStorage.setItem(USERS_KEY, JSON.stringify(updatedUsers));
+
+  if (currentUser?.uid === updatedUser.uid) {
+    await saveCurrentUser(updatedUser);
+  }
+}
+
+function normalizeUser(user: UserProfile): UserProfile {
+  return {
+    ...user,
+    earnedRewardIds: user.earnedRewardIds ?? [],
+    submittedMotionIds: user.submittedMotionIds ?? [],
+    xp: user.xp ?? 0,
+  };
 }

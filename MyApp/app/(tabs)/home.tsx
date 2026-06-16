@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Animated,
   Pressable,
@@ -10,7 +10,8 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { UserProfileBadge } from '@/components/UserProfileBadge';
 import { courses } from '@/data/courses';
 import {
   getCourseProgress,
@@ -19,7 +20,6 @@ import {
   UserProfile,
 } from '@/storage/database';
 
-const FEATURED_COURSE_ID = 'rebuttals';
 const drawerWidth = 340;
 
 export default function HomeScreen() {
@@ -29,9 +29,16 @@ export default function HomeScreen() {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const drawerX = useRef(new Animated.Value(-drawerWidth)).current;
 
-  useEffect(() => {
-    async function loadUser() {
+  useFocusEffect(
+    useCallback(() => {
+      let isActive = true;
+
+      async function loadUser() {
       const savedUser = await getCurrentUser();
+
+      if (!isActive) {
+        return;
+      }
 
       if (savedUser) {
         setUser(savedUser);
@@ -41,8 +48,13 @@ export default function HomeScreen() {
       }
     }
 
-    loadUser();
-  }, [router]);
+      loadUser();
+
+      return () => {
+        isActive = false;
+      };
+    }, [router])
+  );
 
   useEffect(() => {
     Animated.timing(drawerX, {
@@ -85,7 +97,8 @@ export default function HomeScreen() {
 
   const firstName = user.fullName.split(' ')[0] || user.fullName;
   const initials = getInitials(user.fullName);
-  const featuredCourse = courses.find((course) => course.id === FEATURED_COURSE_ID) ?? courses[1];
+  const featuredCourse =
+    courses.find((course) => (courseProgresses[course.id] ?? 0) < 100) ?? courses[courses.length - 1];
   const featuredProgress = courseProgresses[featuredCourse.id] ?? 0;
 
   return (
@@ -100,8 +113,8 @@ export default function HomeScreen() {
             <Ionicons name="menu" size={36} color="#cb8ba6" />
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.profileButton} activeOpacity={0.8} onPress={handleLogout}>
-            <Text style={styles.profileInitials}>{initials}</Text>
+          <TouchableOpacity activeOpacity={0.8} onPress={handleLogout}>
+            <UserProfileBadge initials={initials} xp={user.xp ?? 0} />
           </TouchableOpacity>
         </View>
 
@@ -177,9 +190,7 @@ export default function HomeScreen() {
           <TouchableOpacity style={styles.iconButton} activeOpacity={0.8} onPress={() => setIsDrawerOpen(false)}>
             <Ionicons name="close" size={33} color="#cb8ba6" />
           </TouchableOpacity>
-          <View style={styles.profileButton}>
-            <Text style={styles.profileInitials}>{initials}</Text>
-          </View>
+          <UserProfileBadge initials={initials} xp={user.xp ?? 0} />
         </View>
 
         <Text style={styles.drawerTitle}>Menu</Text>

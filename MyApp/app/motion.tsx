@@ -13,16 +13,34 @@ import {
   View,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { getCurrentUser, UserProfile } from '@/storage/database';
+import { UserProfileBadge } from '@/components/UserProfileBadge';
+import { XpPopup } from '@/components/XpPopup';
+import {
+  awardXpOnce,
+  getCurrentUser,
+  getMotionArgument,
+  hasSubmittedMotion,
+  markMotionSubmitted,
+  saveMotionArgument,
+  UserProfile,
+} from '@/storage/database';
 
 const infoSlideText =
   'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Suspendisse in lacus sit amet dui viverra volutpat quis nec augue. Mauris viverra pharetra lorem sed maximus.';
+const MOTION_ID = 'ths-amnesty-for-dictators';
+const PROPOSITION_SUBMISSION_ID = `${MOTION_ID}-proposition`;
+const OPPOSITION_SUBMISSION_ID = `${MOTION_ID}-opposition`;
 
 export default function WeeklyMotionScreen() {
   const router = useRouter();
   const [user, setUser] = useState<UserProfile | null>(null);
   const [proposition, setProposition] = useState('');
   const [opposition, setOpposition] = useState('');
+  const [submittedSides, setSubmittedSides] = useState({
+    opposition: false,
+    proposition: false,
+  });
+  const [xpPopup, setXpPopup] = useState<{ amount: number; message: string } | null>(null);
 
   useEffect(() => {
     async function loadUser() {
@@ -30,6 +48,12 @@ export default function WeeklyMotionScreen() {
 
       if (savedUser) {
         setUser(savedUser);
+        setSubmittedSides({
+          opposition: await hasSubmittedMotion(savedUser.uid, OPPOSITION_SUBMISSION_ID),
+          proposition: await hasSubmittedMotion(savedUser.uid, PROPOSITION_SUBMISSION_ID),
+        });
+        setProposition(await getMotionArgument(savedUser.uid, PROPOSITION_SUBMISSION_ID));
+        setOpposition(await getMotionArgument(savedUser.uid, OPPOSITION_SUBMISSION_ID));
       } else {
         router.replace('/login');
       }
@@ -40,13 +64,35 @@ export default function WeeklyMotionScreen() {
 
   const initials = getInitials(user?.fullName);
 
-  const handleSubmit = (side: string, text: string) => {
+  const handleSubmit = async (side: 'opposition' | 'proposition', text: string) => {
+    if (!user) {
+      return;
+    }
+
+    if (submittedSides[side]) {
+      return;
+    }
+
     if (!text.trim()) {
       Alert.alert('Add an argument', `Please write your ${side} argument first.`);
       return;
     }
 
-    Alert.alert('Saved', `Your ${side} argument was submitted.`);
+    const submissionId = side === 'proposition' ? PROPOSITION_SUBMISSION_ID : OPPOSITION_SUBMISSION_ID;
+
+    await saveMotionArgument(user.uid, submissionId, text);
+    await markMotionSubmitted(user.uid, submissionId);
+    setSubmittedSides((currentSides) => ({ ...currentSides, [side]: true }));
+
+    const result = await awardXpOnce(user.uid, `motion-submit-${submissionId}`, 20);
+
+    if (result.user) {
+      setUser(result.user);
+    }
+
+    if (result.awarded) {
+      setXpPopup({ amount: 20, message: `You submitted your ${side} argument!` });
+    }
   };
 
   return (
@@ -61,9 +107,7 @@ export default function WeeklyMotionScreen() {
               <Ionicons name="chevron-back" size={34} color="#cb8ba6" />
             </TouchableOpacity>
 
-            <View style={styles.profileCircle}>
-              <Text style={styles.profileText}>{initials}</Text>
-            </View>
+            <UserProfileBadge initials={initials} xp={user?.xp ?? 0} />
           </View>
 
           <View style={styles.motionCard}>
@@ -83,6 +127,7 @@ export default function WeeklyMotionScreen() {
             value={proposition}
             onChangeText={setProposition}
             onSubmit={() => handleSubmit('proposition', proposition)}
+            submitted={submittedSides.proposition}
           />
 
           <ArgumentInput
@@ -91,9 +136,16 @@ export default function WeeklyMotionScreen() {
             value={opposition}
             onChangeText={setOpposition}
             onSubmit={() => handleSubmit('opposition', opposition)}
+            submitted={submittedSides.opposition}
           />
         </ScrollView>
       </KeyboardAvoidingView>
+      <XpPopup
+        amount={xpPopup?.amount ?? 0}
+        message={xpPopup?.message ?? ''}
+        visible={Boolean(xpPopup)}
+        onClose={() => setXpPopup(null)}
+      />
     </SafeAreaView>
   );
 }
@@ -102,27 +154,43 @@ type ArgumentInputProps = {
   darker?: boolean;
   onChangeText: (text: string) => void;
   onSubmit: () => void;
+  submitted: boolean;
   title: string;
   value: string;
 };
 
-function ArgumentInput({ darker, onChangeText, onSubmit, title, value }: ArgumentInputProps) {
+function ArgumentInput({ darker, onChangeText, onSubmit, submitted, title, value }: ArgumentInputProps) {
   return (
     <View style={[styles.inputCard, darker && styles.inputCardDark]}>
       <Text style={styles.inputTitle}>{title}</Text>
-      <TextInput
-        multiline
-        placeholder="Start brainstorming..."
-        placeholderTextColor="#eab8b9"
-        style={styles.textInput}
-        textAlignVertical="top"
-        value={value}
-        onChangeText={onChangeText}
-      />
-      <TouchableOpacity style={styles.submitButton} activeOpacity={0.85} onPress={onSubmit}>
-        <Text style={styles.submitText}>Submit</Text>
-        <Ionicons name="arrow-forward" size={15} color="#f9eeee" />
-      </TouchableOpacity>
+      {submitted ? (
+        <>
+          <TextInput
+            editable={false}
+            multiline
+            style={styles.textInput}
+            textAlignVertical="top"
+            value={value}
+          />
+          <Text style={styles.submittedText}>You have already submitted your arguments.</Text>
+        </>
+      ) : (
+        <>
+          <TextInput
+            multiline
+            placeholder="Start brainstorming..."
+            placeholderTextColor="#eab8b9"
+            style={styles.textInput}
+            textAlignVertical="top"
+            value={value}
+            onChangeText={onChangeText}
+          />
+          <TouchableOpacity style={styles.submitButton} activeOpacity={0.85} onPress={onSubmit}>
+            <Text style={styles.submitText}>Submit</Text>
+            <Ionicons name="arrow-forward" size={15} color="#f9eeee" />
+          </TouchableOpacity>
+        </>
+      )}
     </View>
   );
 }
@@ -263,5 +331,13 @@ const styles = StyleSheet.create({
     color: '#f9eeee',
     fontFamily: 'Alata_400Regular',
     fontSize: 14,
+  },
+  submittedText: {
+    color: '#64385c',
+    fontFamily: 'Alata_400Regular',
+    fontSize: 15,
+    lineHeight: 22,
+    marginTop: 12,
+    textAlign: 'right',
   },
 });

@@ -10,6 +10,7 @@ import {
   View,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { UserProfileBadge } from '@/components/UserProfileBadge';
 import { courses, getCompletedUnits } from '@/data/courses';
 import { getCourseProgress, getCurrentUser, UserProfile } from '@/storage/database';
 
@@ -55,9 +56,7 @@ export default function CourseDashboardScreen() {
             <Ionicons name="chevron-back" size={34} color="#cb8ba6" />
           </TouchableOpacity>
 
-          <View style={styles.profileCircle}>
-            <Text style={styles.profileText}>{initials}</Text>
-          </View>
+          <UserProfileBadge initials={initials} xp={user?.xp ?? 0} />
         </View>
 
         <Text style={styles.title}>Course Dashboard</Text>

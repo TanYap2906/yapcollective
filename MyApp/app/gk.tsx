@@ -9,6 +9,7 @@ import {
   View,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { UserProfileBadge } from '@/components/UserProfileBadge';
 import { getCurrentUser, UserProfile } from '@/storage/database';
 
 const readingLinks = [
@@ -51,9 +52,7 @@ export default function GeneralKnowledgeScreen() {
             <Ionicons name="chevron-back" size={34} color="#cb8ba6" />
           </TouchableOpacity>
 
-          <View style={styles.profileCircle}>
-            <Text style={styles.profileText}>{initials}</Text>
-          </View>
+          <UserProfileBadge initials={initials} xp={user?.xp ?? 0} />
         </View>
 
         <View style={styles.topicCard}>
@@ -78,6 +77,21 @@ export default function GeneralKnowledgeScreen() {
               </View>
             ))}
           </ScrollView>
+        </View>
+
+        <View style={styles.quizIntroCard}>
+          <Text style={styles.quizIntroTitle}>General Knowledge Quiz</Text>
+          <View style={styles.quizTopicBox}>
+            <Text style={styles.quizTopicText}>Historical Dictatorships</Text>
+          </View>
+          <TouchableOpacity
+            style={styles.enterQuizButton}
+            activeOpacity={0.85}
+            onPress={() => router.push('/gk-quiz')}
+          >
+            <Text style={styles.enterQuizText}>Enter Quiz</Text>
+            <Ionicons name="arrow-forward" size={22} color="#f9eeee" />
+          </TouchableOpacity>
         </View>
 
         <Text style={styles.rewardText}>Read GK topics for extra rewards!</Text>
@@ -178,7 +192,7 @@ const styles = StyleSheet.create({
   linksCard: {
     backgroundColor: '#cb8ba6',
     borderRadius: 16,
-    marginBottom: 24,
+    marginBottom: 18,
     paddingHorizontal: 16,
     paddingVertical: 10,
   },
@@ -209,6 +223,49 @@ const styles = StyleSheet.create({
     fontFamily: 'Alata_400Regular',
     fontSize: 14,
     lineHeight: 22,
+  },
+  quizIntroCard: {
+    backgroundColor: '#eab8b9',
+    borderRadius: 22,
+    marginBottom: 18,
+    padding: 12,
+  },
+  quizIntroTitle: {
+    color: '#64385c',
+    fontFamily: 'Alata_400Regular',
+    fontSize: 16,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  quizTopicBox: {
+    alignItems: 'center',
+    backgroundColor: '#cb8ba6',
+    borderRadius: 13,
+    justifyContent: 'center',
+    minHeight: 58,
+    paddingHorizontal: 10,
+  },
+  quizTopicText: {
+    color: '#f9eeee',
+    fontFamily: 'Alata_400Regular',
+    fontSize: 24,
+    textAlign: 'center',
+  },
+  enterQuizButton: {
+    alignItems: 'center',
+    alignSelf: 'flex-end',
+    backgroundColor: '#64385c',
+    borderRadius: 22,
+    flexDirection: 'row',
+    gap: 5,
+    marginTop: 9,
+    paddingHorizontal: 12,
+    paddingVertical: 3,
+  },
+  enterQuizText: {
+    color: '#f9eeee',
+    fontFamily: 'Alata_400Regular',
+    fontSize: 15,
   },
   rewardText: {
     color: '#eab8b9',

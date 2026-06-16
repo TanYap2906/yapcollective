@@ -2,23 +2,25 @@ import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useState } from 'react';
 import { SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { getCurrentUser, UserProfile } from '@/storage/database';
+import { UserProfileBadge } from '@/components/UserProfileBadge';
+import { getCurrentUser, getUsers, UserProfile } from '@/storage/database';
 
 const sampleLeaders = [
-  { name: 'jimmy123', xp: '767676767 xp' },
-  { name: 'john6767', xp: '67676767 xp' },
-  { name: 'timmytan67', xp: '7676767 xp' },
-  { name: 'john-tan', xp: '676767 xp' },
-  { name: 'jimmytuffknuckles', xp: '76767 xp' },
-  { name: 'timmythefirst', xp: '6767 xp' },
-  { name: 'jimjimbob', xp: '767 xp' },
-  { name: 'timmyjimmy', xp: '67 xp' },
-  { name: 'jimmythesecond', xp: '7 xp' },
+  { id: 'sample-1', name: 'jimmy123', xp: 760 },
+  { id: 'sample-2', name: 'john6767', xp: 670 },
+  { id: 'sample-3', name: 'timmytan67', xp: 540 },
+  { id: 'sample-4', name: 'john-tan', xp: 420 },
+  { id: 'sample-5', name: 'jimmytuffknuckles', xp: 360 },
+  { id: 'sample-6', name: 'timmythefirst', xp: 280 },
+  { id: 'sample-7', name: 'jimjimbob', xp: 190 },
+  { id: 'sample-8', name: 'timmyjimmy', xp: 90 },
+  { id: 'sample-9', name: 'jimmythesecond', xp: 10 },
 ];
 
 export default function LeaderboardScreen() {
   const router = useRouter();
   const [user, setUser] = useState<UserProfile | null>(null);
+  const [leaders, setLeaders] = useState(sampleLeaders);
 
   useEffect(() => {
     async function loadUser() {
@@ -26,6 +28,13 @@ export default function LeaderboardScreen() {
 
       if (savedUser) {
         setUser(savedUser);
+        const savedUsers = await getUsers();
+        const userLeaders = savedUsers.map((savedAppUser) => ({
+          id: savedAppUser.uid,
+          name: savedAppUser.fullName.replace(/\s+/g, '').toLowerCase(),
+          xp: savedAppUser.xp ?? 0,
+        }));
+        setLeaders([...userLeaders, ...sampleLeaders].sort((a, b) => b.xp - a.xp));
       } else {
         router.replace('/login');
       }
@@ -35,8 +44,6 @@ export default function LeaderboardScreen() {
   }, [router]);
 
   const initials = getInitials(user?.fullName);
-  const username = user?.fullName.replace(/\s+/g, '').toLowerCase() || 'you';
-  const leaders = [{ name: username, xp: '6767676767 xp' }, ...sampleLeaders];
 
   return (
     <SafeAreaView style={styles.container}>
@@ -46,9 +53,7 @@ export default function LeaderboardScreen() {
             <Ionicons name="menu" size={36} color="#cb8ba6" />
           </TouchableOpacity>
 
-          <View style={styles.profileCircle}>
-            <Text style={styles.profileText}>{initials}</Text>
-          </View>
+          <UserProfileBadge initials={initials} xp={user?.xp ?? 0} />
         </View>
 
         <View style={styles.leaderboardCard}>
@@ -58,7 +63,7 @@ export default function LeaderboardScreen() {
           </View>
 
           {leaders.map((leader, index) => {
-            const isHighlight = leader.name === username;
+            const isHighlight = leader.id === user?.uid;
 
             return (
               <View key={`${leader.name}-${index}`} style={[styles.rankRow, isHighlight && styles.rankRowHighlight]}>
@@ -70,7 +75,7 @@ export default function LeaderboardScreen() {
                 <Text style={[styles.leaderName, isHighlight && styles.leaderNameLight]} numberOfLines={1}>
                   {leader.name}
                 </Text>
-                <Text style={styles.xpText}>{leader.xp}</Text>
+                <Text style={styles.xpText}>{leader.xp} xp</Text>
               </View>
             );
           })}
