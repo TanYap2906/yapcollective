@@ -39,7 +39,19 @@
           }
         }
       ],
-      "expo-font"
+      "expo-font",
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "Allow MyApp to record your debate arguments."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow MyApp to choose your profile picture."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

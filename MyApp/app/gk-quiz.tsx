@@ -109,7 +109,7 @@ export default function GeneralKnowledgeQuizScreen() {
             <Ionicons name="chevron-back" size={34} color="#cb8ba6" />
           </TouchableOpacity>
 
-          <UserProfileBadge initials={initials} xp={user?.xp ?? 0} />
+          <UserProfileBadge initials={initials} profileImageUri={user?.profileImageUri} xp={user?.xp ?? 0} />
         </View>
 
         <View style={styles.quizHeaderCard}>

@@ -16,7 +16,6 @@ import { courses } from '@/data/courses';
 import {
   getCourseProgress,
   getCurrentUser,
-  logoutUser,
   UserProfile,
 } from '@/storage/database';
 
@@ -72,11 +71,6 @@ export default function HomeScreen() {
     setCourseProgresses(Object.fromEntries(entries));
   };
 
-  const handleLogout = async () => {
-    await logoutUser();
-    router.replace('/login');
-  };
-
   const openCourse = (courseId: string) => {
     setIsDrawerOpen(false);
     router.push({
@@ -113,9 +107,7 @@ export default function HomeScreen() {
             <Ionicons name="menu" size={36} color="#cb8ba6" />
           </TouchableOpacity>
 
-          <TouchableOpacity activeOpacity={0.8} onPress={handleLogout}>
-            <UserProfileBadge initials={initials} xp={user.xp ?? 0} />
-          </TouchableOpacity>
+          <UserProfileBadge initials={initials} profileImageUri={user.profileImageUri} xp={user.xp ?? 0} />
         </View>
 
         <View style={styles.greetingBlock}>
@@ -188,16 +180,16 @@ export default function HomeScreen() {
       <Animated.View style={[styles.drawer, { transform: [{ translateX: drawerX }] }]}>
         <View style={styles.drawerTopBar}>
           <TouchableOpacity style={styles.iconButton} activeOpacity={0.8} onPress={() => setIsDrawerOpen(false)}>
-            <Ionicons name="close" size={33} color="#cb8ba6" />
+            <Ionicons name="close-circle-outline" size={34} color="#64385c" />
           </TouchableOpacity>
-          <UserProfileBadge initials={initials} xp={user.xp ?? 0} />
+          <UserProfileBadge initials={initials} profileImageUri={user.profileImageUri} xp={user.xp ?? 0} />
         </View>
 
         <Text style={styles.drawerTitle}>Menu</Text>
 
         <View style={styles.drawerNav}>
           <DrawerNavItem
-            icon="book"
+            icon="library-outline"
             label="Course Dashboard"
             onPress={() => {
               setIsDrawerOpen(false);
@@ -205,7 +197,7 @@ export default function HomeScreen() {
             }}
           />
           <DrawerNavItem
-            icon="podium"
+            icon="trophy-outline"
             label="Leaderboard"
             onPress={() => {
               setIsDrawerOpen(false);
@@ -213,7 +205,7 @@ export default function HomeScreen() {
             }}
           />
           <DrawerNavItem
-            icon="settings"
+            icon="options-outline"
             label="Settings"
             onPress={() => {
               setIsDrawerOpen(false);
@@ -269,10 +261,10 @@ function DrawerNavItem({ icon, label, onPress }: DrawerNavItemProps) {
   return (
     <TouchableOpacity style={styles.drawerNavItem} activeOpacity={0.85} onPress={onPress}>
       <View style={styles.drawerNavIcon}>
-        <Ionicons name={icon} size={24} color="#f9eeee" />
+        <Ionicons name={icon} size={24} color="#64385c" />
       </View>
       <Text style={styles.drawerNavText}>{label}</Text>
-      <Ionicons name="arrow-forward" size={20} color="#64385c" />
+      <Ionicons name="chevron-forward-circle-outline" size={24} color="#64385c" />
     </TouchableOpacity>
   );
 }
@@ -512,12 +504,12 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(58, 43, 62, 0.52)',
   },
   drawer: {
-    backgroundColor: '#3a2b3e',
+    backgroundColor: '#cb8ba6',
     bottom: 0,
     left: 0,
     paddingBottom: 24,
     paddingHorizontal: 18,
-    paddingTop: 34,
+    paddingTop: 58,
     position: 'absolute',
     top: 0,
     width: drawerWidth,
@@ -529,29 +521,31 @@ const styles = StyleSheet.create({
     marginBottom: 22,
   },
   drawerTitle: {
-    color: '#f9eeee',
+    color: '#3a2b3e',
     fontFamily: 'Alata_400Regular',
     fontSize: 33,
     marginBottom: 18,
   },
   drawerNav: {
-    gap: 12,
+    gap: 2,
   },
   drawerNavItem: {
     alignItems: 'center',
-    backgroundColor: '#eab8b9',
-    borderRadius: 18,
+    borderBottomColor: '#eab8b9',
+    borderBottomWidth: 1,
     flexDirection: 'row',
-    gap: 12,
-    padding: 13,
+    gap: 14,
+    minHeight: 58,
+    paddingHorizontal: 4,
+    paddingVertical: 10,
   },
   drawerNavIcon: {
     alignItems: 'center',
-    backgroundColor: '#64385c',
-    borderRadius: 19,
-    height: 38,
+    backgroundColor: '#f9eeee',
+    borderRadius: 20,
+    height: 40,
     justifyContent: 'center',
-    width: 38,
+    width: 40,
   },
   drawerNavText: {
     color: '#3a2b3e',

@@ -4,6 +4,7 @@ const USERS_KEY = 'users';
 const CURRENT_USER_KEY = 'currentUser';
 const COURSE_PROGRESS_KEY = 'courseProgress';
 const MOTION_ARGUMENTS_KEY = 'motionArguments';
+const MOTION_FEEDBACK_KEY = 'motionFeedback';
 
 export type UserProfile = {
   uid: string;
@@ -11,10 +12,16 @@ export type UserProfile = {
   email: string;
   password: string;
   createdAt: string;
+  profileImageUri?: string;
   xp?: number;
   earnedRewardIds?: string[];
   submittedMotionIds?: string[];
   role: 'user';
+};
+
+export type MotionFeedback = {
+  feedback: string;
+  score: number;
 };
 
 export async function getUsers(): Promise<UserProfile[]> {
@@ -57,6 +64,24 @@ export async function getCurrentUser(): Promise<UserProfile | null> {
 
 export async function logoutUser(): Promise<void> {
   await AsyncStorage.removeItem(CURRENT_USER_KEY);
+}
+
+export async function updateCurrentUserProfile(
+  updates: Partial<Pick<UserProfile, 'fullName' | 'password' | 'profileImageUri'>>
+): Promise<UserProfile | null> {
+  const currentUser = await getCurrentUser();
+
+  if (!currentUser) {
+    return null;
+  }
+
+  const updatedUser: UserProfile = {
+    ...currentUser,
+    ...updates,
+  };
+
+  await saveUpdatedUser(updatedUser);
+  return updatedUser;
 }
 
 export async function getCourseProgress(userId: string, courseId: string): Promise<number> {
@@ -165,6 +190,37 @@ export async function saveMotionArgument(
   await AsyncStorage.setItem(MOTION_ARGUMENTS_KEY, JSON.stringify(argumentsByUser));
 }
 
+export async function getMotionFeedback(
+  userId: string,
+  submissionId: string
+): Promise<MotionFeedback | null> {
+  const savedFeedback = await AsyncStorage.getItem(MOTION_FEEDBACK_KEY);
+
+  if (!savedFeedback) {
+    return null;
+  }
+
+  const feedbackByUser = JSON.parse(savedFeedback);
+  return feedbackByUser[userId]?.[submissionId] ?? null;
+}
+
+export async function saveMotionFeedback(
+  userId: string,
+  submissionId: string,
+  feedback: MotionFeedback
+): Promise<void> {
+  const savedFeedback = await AsyncStorage.getItem(MOTION_FEEDBACK_KEY);
+  const feedbackByUser = savedFeedback ? JSON.parse(savedFeedback) : {};
+  const userFeedback = feedbackByUser[userId] ?? {};
+
+  feedbackByUser[userId] = {
+    ...userFeedback,
+    [submissionId]: feedback,
+  };
+
+  await AsyncStorage.setItem(MOTION_FEEDBACK_KEY, JSON.stringify(feedbackByUser));
+}
+
 async function saveUpdatedUser(updatedUser: UserProfile): Promise<void> {
   const users = await getUsers();
   const updatedUsers = users.map((user) => (user.uid === updatedUser.uid ? updatedUser : user));
@@ -181,6 +237,7 @@ function normalizeUser(user: UserProfile): UserProfile {
   return {
     ...user,
     earnedRewardIds: user.earnedRewardIds ?? [],
+    profileImageUri: user.profileImageUri,
     submittedMotionIds: user.submittedMotionIds ?? [],
     xp: user.xp ?? 0,
   };
